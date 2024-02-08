@@ -20,6 +20,6 @@ class Doctor(models.Model):
     experince = models.CharField(max_length=100)
     education_qualification= models.CharField(max_length =100)
     working_details= models.CharField(max_length =100)
-    identity_proof=models.ImageField(upload_to='identity_proofs/')
-    medical_liscence=  models.ImageField(upload_to='medical_licenses/')
+    identity_proof=models.FileField(upload_to='identity_proofs/')
+    medical_liscence=  models.FileField(upload_to='medical_licenses/')
 

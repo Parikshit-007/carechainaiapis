@@ -1,4 +1,3 @@
-# ipd/urls.py
 from django.urls import path
 from ipd.views.views import (
     IPDRegistrationListCreateView, IPDRegistrationRetrieveUpdateDestroyView,
@@ -7,10 +6,16 @@ from ipd.views.views import (
     IPDAdmitReportListCreateView, IPDAdmitReportRetrieveUpdateDestroyView,
     IPDDepositReportListCreateView, IPDDepositReportRetrieveUpdateDestroyView,
     IPDDischargeReportListCreateView, IPDDischargeReportRetrieveUpdateDestroyView,
-    DepartmentReportListCreateView, DepartmentReportRetrieveUpdateDestroyView,
+    DepartmentReportListCreateView, DepartmentReportRetrieveUpdateDestroyView, WardListCreateView, WardRetrieveUpdateDestroyView,
     WardWiseReportListCreateView, WardWiseReportRetrieveUpdateDestroyView,
     DoctorWiseReportListCreateView, DoctorWiseReportRetrieveUpdateDestroyView,
     TPAReportListCreateView, TPAReportRetrieveUpdateDestroyView,
+    # Import the newly added views
+    BedListCreateView, BedRetrieveUpdateDestroyView,
+    BedBookingListCreateView, BedBookingRetrieveUpdateDestroyView,
+    BedAllocationListCreateView, BedAllocationRetrieveUpdateDestroyView,
+    BedStatusUpdateListCreateView, BedStatusUpdateRetrieveUpdateDestroyView,
+    BedAvailabilityListCreateView, BedAvailabilityRetrieveUpdateDestroyView,
 )
 
 urlpatterns = [
@@ -34,7 +39,8 @@ urlpatterns = [
 
     path('department-reports/', DepartmentReportListCreateView.as_view(), name='department-report-list-create'),
     path('department-reports/<int:pk>/', DepartmentReportRetrieveUpdateDestroyView.as_view(), name='department-report-retrieve-update-destroy'),
-
+    path('wards/', WardListCreateView.as_view(), name='ward-list-create'),
+    path('wards/<int:pk>/', WardRetrieveUpdateDestroyView.as_view(), name='ward-retrieve-update-destroy'),
     path('ward-wise-reports/', WardWiseReportListCreateView.as_view(), name='ward-wise-report-list-create'),
     path('ward-wise-reports/<int:pk>/', WardWiseReportRetrieveUpdateDestroyView.as_view(), name='ward-wise-report-retrieve-update-destroy'),
 
@@ -43,4 +49,20 @@ urlpatterns = [
 
     path('tpa-reports/', TPAReportListCreateView.as_view(), name='tpa-report-list-create'),
     path('tpa-reports/<int:pk>/', TPAReportRetrieveUpdateDestroyView.as_view(), name='tpa-report-retrieve-update-destroy'),
+
+    # Add URLs for Bed-related views
+    path('beds/', BedListCreateView.as_view(), name='bed-list-create'),
+    path('beds/<int:pk>/', BedRetrieveUpdateDestroyView.as_view(), name='bed-retrieve-update-destroy'),
+
+    path('bed-bookings/', BedBookingListCreateView.as_view(), name='bed-booking-list-create'),
+    path('bed-bookings/<int:pk>/', BedBookingRetrieveUpdateDestroyView.as_view(), name='bed-booking-retrieve-update-destroy'),
+
+    path('bed-allocations/', BedAllocationListCreateView.as_view(), name='bed-allocation-list-create'),
+    path('bed-allocations/<int:pk>/', BedAllocationRetrieveUpdateDestroyView.as_view(), name='bed-allocation-retrieve-update-destroy'),
+
+    path('bed-status-updates/', BedStatusUpdateListCreateView.as_view(), name='bed-status-update-list-create'),
+    path('bed-status-updates/<int:pk>/', BedStatusUpdateRetrieveUpdateDestroyView.as_view(), name='bed-status-update-retrieve-update-destroy'),
+
+    path('bed-availabilities/', BedAvailabilityListCreateView.as_view(), name='bed-availability-list-create'),
+    path('bed-availabilities/<int:pk>/', BedAvailabilityRetrieveUpdateDestroyView.as_view(), name='bed-availability-retrieve-update-destroy'),
 ]

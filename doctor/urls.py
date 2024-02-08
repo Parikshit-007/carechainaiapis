@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from doctor.views.views import DoctorListCreateView, DoctorRetrieveUpdateDestroyView
 urlpatterns = [
   path('api/doctors/', DoctorListCreateView.as_view(), name='doctor-list-create'),
-  path('api/doctors/<int:pk>/', DoctorListCreateView.as_view(), name='doctor-list-create'),
+  path('api/doctors/<int:pk>/', DoctorRetrieveUpdateDestroyView.as_view(), name='doctor-retrieve-update-destroy'),
   path('doctors/', DoctorListCreateView.as_view(), name='doctor-list-create'),
   path('doctors/<int:pk>/', DoctorRetrieveUpdateDestroyView.as_view(), name='doctor-retrieve-update-destroy'),
 

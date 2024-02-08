@@ -1,14 +1,15 @@
 # ipd/views.py
 from rest_framework import generics
 from ipd.models.models import (
-    IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, 
-    IPDDepositReport, IPDDischargeReport, DepartmentReport, 
-    WardWiseReport, DoctorWiseReport, TPAReport
+    BedAllocation, BedAvailability, BedBooking, BedStatusUpdate, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, 
+    IPDDepositReport, IPDDischargeReport, DepartmentReport, Ward, 
+    WardWiseReport, DoctorWiseReport, TPAReport, Bed
 )
 from ipd.serializers import (
     IPDRegistrationSerializer, IPDDepositSerializer, IPDDischargeSerializer, 
     IPDAdmitReportSerializer, IPDDepositReportSerializer, IPDDischargeReportSerializer,
-    DepartmentReportSerializer, WardWiseReportSerializer, DoctorWiseReportSerializer, TPAReportSerializer
+    DepartmentReportSerializer, WardSerializer, WardWiseReportSerializer, DoctorWiseReportSerializer, TPAReportSerializer , BedSerializer, BedBookingSerializer, BedAllocationSerializer, \
+    BedStatusUpdateSerializer, BedAvailabilitySerializer
 )
 
 class IPDRegistrationListCreateView(generics.ListCreateAPIView):
@@ -21,7 +22,14 @@ class IPDRegistrationListCreateView(generics.ListCreateAPIView):
          qs= qs.filter(title__icontains=title)
       return qs    
     
+class WardListCreateView(generics.ListCreateAPIView):
+    queryset = Ward.objects.all()
+    serializer_class = WardSerializer
 
+class WardRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Ward.objects.all()
+    serializer_class = WardSerializer
+    
 class IPDRegistrationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = IPDRegistration.objects.all()
     serializer_class = IPDRegistrationSerializer
@@ -97,3 +105,42 @@ class TPAReportListCreateView(generics.ListCreateAPIView):
 class TPAReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = TPAReport.objects.all()
     serializer_class = TPAReportSerializer
+class BedListCreateView(generics.ListCreateAPIView):
+    queryset = Bed.objects.all()
+    serializer_class = BedSerializer
+
+class BedRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Bed.objects.all()
+    serializer_class = BedSerializer
+
+class BedBookingListCreateView(generics.ListCreateAPIView):
+    queryset = BedBooking.objects.all()
+    serializer_class = BedBookingSerializer
+
+class BedBookingRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = BedBooking.objects.all()
+    serializer_class = BedBookingSerializer
+
+class BedAllocationListCreateView(generics.ListCreateAPIView):
+    queryset = BedAllocation.objects.all()
+    serializer_class = BedAllocationSerializer
+
+class BedAllocationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = BedAllocation.objects.all()
+    serializer_class = BedAllocationSerializer
+
+class BedStatusUpdateListCreateView(generics.ListCreateAPIView):
+    queryset = BedStatusUpdate.objects.all()
+    serializer_class = BedStatusUpdateSerializer
+
+class BedStatusUpdateRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = BedStatusUpdate.objects.all()
+    serializer_class = BedStatusUpdateSerializer
+
+class BedAvailabilityListCreateView(generics.ListCreateAPIView):
+    queryset = BedAvailability.objects.all()
+    serializer_class = BedAvailabilitySerializer
+
+class BedAvailabilityRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = BedAvailability.objects.all()
+    serializer_class = BedAvailabilitySerializer

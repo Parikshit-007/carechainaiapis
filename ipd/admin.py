@@ -10,7 +10,7 @@ from ipd.models.models import (
 
 @admin.register(IPDRegistration)
 class IPDRegistrationAdmin(admin.ModelAdmin):
-    list_display = ('admission_id', 'patient', 'admission_date', 'ward', 'bed_number')
+    list_display = ('admission_id', 'patient', 'admission_date', 'ward', 'bed')
 
 @admin.register(IPDDeposit)
 class IPDDepositAdmin(admin.ModelAdmin):

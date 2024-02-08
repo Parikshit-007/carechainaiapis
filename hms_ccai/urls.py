@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/patient/', include('patient.urls')),
      path('api/ipd/', include('ipd.urls')),
     path('api/opd/', include('opd.urls')),
+    path('api/hos_login', include('hos_login.urls')),
     path('api/accounts/', include('accounts.urls')),
      path('api/patient_dashboard/', include('patient_dashboard.urls')),
    # patient_dashboard

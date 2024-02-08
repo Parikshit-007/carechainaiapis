@@ -16,6 +16,21 @@ class PatientListCreateView(generics.ListCreateAPIView):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            # Check if the search query is an integer (assuming PatientID is an integer field)
+            if search_query.isdigit():
+                queryset = queryset.filter(PatientID=int(search_query))
+            else:
+                queryset = queryset.filter(fullname__icontains=search_query)
+        return queryset
+
+
+
+
 class PatientRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
