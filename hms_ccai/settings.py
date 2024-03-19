@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
+from datetime import timedelta
 import os
 from pathlib import Path
 
@@ -29,7 +30,7 @@ DJONGO_DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000']
 # Application definition
 
 INSTALLED_APPS = [
@@ -54,7 +55,49 @@ INSTALLED_APPS = [
     'rest_framework',
     'pharmacy',
     'patient_dashboard',
+    'rest_framework_simplejwt',
 ]
+AUTHENTICATION_BACKENDS = ['hos_login.backends.CustomUserModelBackend']
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=50),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+
+    'ALGORITHM': 'HS256',
+
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    'JTI_CLAIM': 'jti',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+}
+#AUTH_USER_MODEL = 'hos_login.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -96,8 +139,12 @@ WSGI_APPLICATION = 'hms_ccai.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'djongo',
-        'NAME': 'hms_ccai',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'hms_ccai',       # Your database name
+        'USER': 'root',   # Your database username
+        'PASSWORD': 'ccai',   # Your database password
+        'HOST': '127.0.0.1',        # Your database host, default is 'localhost'
+        'PORT': '3306',             # Your database port, default is '3306'
     }
 }
 

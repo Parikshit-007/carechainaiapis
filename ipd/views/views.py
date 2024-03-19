@@ -1,27 +1,79 @@
-# ipd/views.py
+# views.py
+from django.http import Http404
 from rest_framework import generics
 from ipd.models.models import (
     BedAllocation, BedAvailability, BedBooking, BedStatusUpdate, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, 
     IPDDepositReport, IPDDischargeReport, DepartmentReport, Ward, 
     WardWiseReport, DoctorWiseReport, TPAReport, Bed
-)
+) 
+from ipd.models.models import Bed
+from django.utils import timezone
+
+from django.db import transaction
+
 from ipd.serializers import (
     IPDRegistrationSerializer, IPDDepositSerializer, IPDDischargeSerializer, 
     IPDAdmitReportSerializer, IPDDepositReportSerializer, IPDDischargeReportSerializer,
     DepartmentReportSerializer, WardSerializer, WardWiseReportSerializer, DoctorWiseReportSerializer, TPAReportSerializer , BedSerializer, BedBookingSerializer, BedAllocationSerializer, \
     BedStatusUpdateSerializer, BedAvailabilitySerializer
 )
+from rest_framework import status
+from rest_framework.response import Response
+
+from django.db import transaction
 
 class IPDRegistrationListCreateView(generics.ListCreateAPIView):
-    queryset = IPDRegistration.objects.all()
     serializer_class = IPDRegistrationSerializer
-    def get_queryset(self):
-      qs= IPDRegistration.objects.all()
-      title = self.request.query_params.get('title')
-      if title is not None:
-         qs= qs.filter(title__icontains=title)
-      return qs    
     
+    def get_queryset(self):
+        queryset = IPDRegistration.objects.all()
+        ward_id = self.request.query_params.get('ward_id')
+        if ward_id:
+            queryset = queryset.filter(bed__ward_id=ward_id)
+        return queryset
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        ward_id = request.data.get('ward')
+        bed_id = request.data.get('bed')
+        # number = request.data.get('number') 
+        # print(number)# Get the bed number directly
+        patient_id = request.data.get('patient')
+
+        if not bed_id or not ward_id or not patient_id:
+            return Response({"message": "Bed number, ward ID, and patient ID are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            bed = Bed.objects.get(id=bed_id)  # Query the bed directly using the number
+        except Bed.DoesNotExist:
+            raise Http404("Bed does not exist")
+
+        ward = Ward.objects.get(pk=ward_id)
+
+        if not ward:
+            return Response({"message": "Ward does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if IPDRegistration.objects.filter(patient_id=patient_id, ward_id=ward_id).exists():
+            return Response({"message": "IPD registration with this bed already exists for the patient"}, status=status.HTTP_400_BAD_REQUEST)
+
+        ipd_registration_data = {
+            'patient': patient_id,
+            'admission_date': request.data.get('admission_date'),
+            'ward': ward_id,
+            'bed': bed.id
+        }
+
+        ipd_registration_serializer = self.get_serializer(data=ipd_registration_data)
+        ipd_registration_serializer.is_valid(raise_exception=True)
+        self.perform_create(ipd_registration_serializer)
+
+        bed.is_available = False
+        bed.save()
+
+        headers = self.get_success_headers(ipd_registration_serializer.data)
+        return Response(ipd_registration_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
 class WardListCreateView(generics.ListCreateAPIView):
     queryset = Ward.objects.all()
     serializer_class = WardSerializer
@@ -34,6 +86,47 @@ class IPDRegistrationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPI
     queryset = IPDRegistration.objects.all()
     serializer_class = IPDRegistrationSerializer
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        bed_number = request.data.get('bed')
+        ward_id = request.data.get('ward')
+        patient_id = request.data.get('patient')
+        print('bed num:',bed_number)
+
+        print('bed id num:',bed_number)
+        print('ward_id:',ward_id)
+        if not bed_number or not ward_id or not patient_id:
+            return Response({"message": "Bed number, ward ID, and patient ID are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            ward = Ward.objects.get(pk=ward_id)
+            bed = Bed.get_available_bed(bed_number, ward_id )
+          
+            if bed is None:
+                return Response({"message": "Selected bed is not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Ward.DoesNotExist:
+            return Response({"message": "Ward does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if an IPD registration with the same patient and ward already exists
+        if IPDRegistration.objects.filter(patient_id=patient_id, ward_id=ward_id).exists():
+            return Response({"message": "IPD registration with this bed already exists for the patient"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark the previously assigned bed as unavailable
+        if instance.bed:
+            instance.bed.is_available = False
+            instance.bed.save()
+
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Mark the newly assigned bed as unavailable
+        bed.is_available = False
+        bed.save()
+
+        return Response(serializer.data)
 class IPDDepositListCreateView(generics.ListCreateAPIView):
     queryset = IPDDeposit.objects.all()
     serializer_class = IPDDepositSerializer
@@ -66,13 +159,51 @@ class IPDDepositReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAP
     queryset = IPDDepositReport.objects.all()
     serializer_class = IPDDepositReportSerializer
 
+from rest_framework import generics, status
+from rest_framework.response import Response
+from django.db import transaction
+from ipd.models.models import IPDDischarge, IPDRegistration, Bed
+
 class IPDDischargeReportListCreateView(generics.ListCreateAPIView):
     queryset = IPDDischargeReport.objects.all()
     serializer_class = IPDDischargeReportSerializer
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Update the discharge date of the IPD registration
+        admission = instance.admission
+        ipd_registration = admission.ipd_registration
+        ipd_registration.discharge_date = timezone.now()
+        ipd_registration.is_discharged = True
+        ipd_registration.save()
+
+        return Response(serializer.data)
+
+
 class IPDDischargeReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = IPDDischargeReport.objects.all()
     serializer_class = IPDDischargeReportSerializer
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Update the discharge date of the IPD registration
+        admission = instance.admission
+        ipd_registration = admission.ipd_registration
+        ipd_registration.discharge_date = timezone.now()
+        ipd_registration.is_discharged = True
+        ipd_registration.save()
+
+        return Response(serializer.data)
 
 class DepartmentReportListCreateView(generics.ListCreateAPIView):
     queryset = DepartmentReport.objects.all()
@@ -105,9 +236,66 @@ class TPAReportListCreateView(generics.ListCreateAPIView):
 class TPAReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = TPAReport.objects.all()
     serializer_class = TPAReportSerializer
+
 class BedListCreateView(generics.ListCreateAPIView):
-    queryset = Bed.objects.all()
     serializer_class = BedSerializer
+
+    def get_queryset(self):
+        queryset = Bed.objects.all()
+        ward_id = self.request.query_params.get('ward_id')  # Get the ward ID from query params
+
+        # If ward_id is provided, filter beds by that ward
+        if ward_id:
+            queryset = queryset.filter(ward_id=ward_id)
+
+        return queryset
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        bed_number = request.data.get('bed')
+        ward_id = request.data.get('ward')
+
+        if not bed_number or not ward_id:
+            return Response({"message": "Bed number and ward ID are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            bed = Bed.get_available_bed(bed_number, ward_id)
+
+            if bed is None:
+                return Response({"message": "Selected bed is not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Bed.DoesNotExist:
+            return Response({"message": "Selected bed is not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the bed is already booked
+        if BedBooking.objects.filter(bed=bed).exists():
+            return Response({"message": "Selected bed is already booked"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the patient has already booked a bed
+        if IPDRegistration.objects.filter(patient=request.data.get('patient')).exists():
+            return Response({"message": "Patient already has a booked bed"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Assuming you have the patient data available in the request data
+        patient_data = {
+            # Extract patient data from request
+        }
+
+        # Create IPDRegistration instance
+        ipd_registration_serializer = IPDRegistrationSerializer(data=patient_data)
+        if ipd_registration_serializer.is_valid():
+            ipd_registration = ipd_registration_serializer.save()
+        else:
+            return Response(ipd_registration_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark the bed as unavailable
+        bed.is_available = False
+        bed.save()
+
+        # Create BedBooking instance
+        BedBooking.objects.create(patient=ipd_registration.patient, bed=bed)
+
+        # Return response
+        return Response({"message": "Bed booked successfully"}, status=status.HTTP_201_CREATED)
 
 class BedRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Bed.objects.all()
@@ -116,6 +304,53 @@ class BedRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 class BedBookingListCreateView(generics.ListCreateAPIView):
     queryset = BedBooking.objects.all()
     serializer_class = BedBookingSerializer
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        bed_instance = self.get_object()
+        bed_number = request.data.get('number')
+        ward_id = request.data.get('ward')
+
+        if not bed_number or not ward_id:
+            return Response({"message": "Bed number and ward ID are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            bed = Bed.get_available_bed(bed_number, ward_id)
+
+            if bed is None:
+                return Response({"message": "Selected bed is not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Bed.DoesNotExist:
+            return Response({"message": "Selected bed is not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the bed is already booked
+        if BedBooking.objects.filter(bed=bed).exists():
+            return Response({"message": "Selected bed is already booked"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the patient has already booked a bed
+        if IPDRegistration.objects.filter(patient=request.data.get('patient')).exists():
+            return Response({"message": "Patient already has a booked bed"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Assuming you have the patient data available in the request data
+        patient_data = {
+            # Extract patient data from request
+        }
+
+        # Create IPDRegistration instance
+        ipd_registration_serializer = IPDRegistrationSerializer(data=patient_data)
+        if ipd_registration_serializer.is_valid():
+            ipd_registration = ipd_registration_serializer.save()
+        else:
+            return Response(ipd_registration_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark the bed as unavailable
+        bed.is_available = False
+        bed.save()
+
+        # Create BedBooking instance
+        BedBooking.objects.create(patient=ipd_registration.patient, bed=bed)
+
+        # Return response
+        return Response({"message": "Bed updated and booked successfully"}, status=status.HTTP_200_OK)
 
 class BedBookingRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = BedBooking.objects.all()
@@ -144,3 +379,4 @@ class BedAvailabilityListCreateView(generics.ListCreateAPIView):
 class BedAvailabilityRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = BedAvailability.objects.all()
     serializer_class = BedAvailabilitySerializer
+ 

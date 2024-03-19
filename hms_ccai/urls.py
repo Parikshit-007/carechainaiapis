@@ -12,7 +12,7 @@ urlpatterns = [
     path('opd/', include('opd.urls')),
     path('accounts/', include('accounts.urls')),
     path('ipd/', include('ipd.urls')),
-    path('staff/', include('staff.urls')),
+    path('api/staff/', include('staff.urls')),
     path('inventory/', include('inventory.urls')),
     path('emergency/', include('emergency.urls')),
     path('analytics/', include('analytics.urls')),

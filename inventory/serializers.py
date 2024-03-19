@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from inventory.models.models import Medicine, Equipment, StockLevelAlert, PurchaseOrder, InventoryItem
+from inventory.models.models import Medicine, Equipment, PatientEquipmentUsage, StockLevelAlert, PurchaseOrder, InventoryItem
 
 class MedicineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,4 +24,9 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
 class InventoryItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InventoryItem
+        fields = '__all__'
+
+class PatientEquipmentUsageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatientEquipmentUsage
         fields = '__all__'

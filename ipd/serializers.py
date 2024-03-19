@@ -1,16 +1,19 @@
 # ipd/serializers.py
 from rest_framework import serializers
 from ipd.models.models import Bed,Ward, BedAllocation , BedAvailability, BedBooking , BedStatusUpdate ,WardWiseBedReport, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, IPDDepositReport, IPDDischargeReport, DepartmentReport, WardWiseReport, DoctorWiseReport, TPAReport
-class BedSerializer(serializers.ModelSerializer):
-    ward = serializers.StringRelatedField()
-    class Meta:
-        model = Bed
-        fields = '__all__'
+
 
 class WardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ward
         fields = '__all__'
+class BedSerializer(serializers.ModelSerializer):
+    ward = WardSerializer()
+    class Meta:
+        model = Bed
+        fields = '__all__'  
+    def get_is_available(self, obj):
+        return obj.is_available()          
 
 class BedBookingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,6 +42,8 @@ class IPDRegistrationSerializer(serializers.ModelSerializer):
     #     super().__init__(*args, **kwargs)
     #     if available_beds is not None:
     #         self.fields['bed'].queryset = available_beds
+  
+
     class Meta:
         model = IPDRegistration
         fields = '__all__'
