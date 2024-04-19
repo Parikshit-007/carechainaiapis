@@ -11,16 +11,62 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
-from .models import User
+from .models import Custom_User
 from .backends import CustomUserModelBackend
-from .models import User
+from .models import Custom_User
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ('id', 'username', 'email')
+        model= Custom_User
+        fields= ('id','email', 'username')    
+class CreateUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True)
 
+    class Meta:
+        model = Custom_User
+        fields = ['email', 'username', 'password', 'password2']
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError(
+                {"password": "Password fields didn't match."})
+
+        return attrs
+
+    def create(self, validated_data):
+        user = Custom_User.objects.create(
+            username=validated_data['username'],
+            email=validated_data['email'],
+           # hospital=validated_data['hospital'],
+        )
+
+        user.set_password(validated_data['password'])
+        user.save()
+     
+
+        return user
+
+class UpdateUserSerializer(serializers.ModelSerializer):
+    passsword = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = Custom_User
+        fields = ['hospital', 'email', 'username', 'password']
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password')
+        if password:
+            instance.set_password(password)
+        instance = super().update(instance, validated_data)
+        return instance
+
+#         return user
 @csrf_exempt
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
@@ -42,128 +88,32 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Invalid username or password.")
         else:
             raise serializers.ValidationError("Both username and password are required.")
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(
-        write_only=True, required=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True, required=True)
-
-    class Meta:
-        model = User
-        fields = ('hospital','email', 'username', 'password', 'password2')
-
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError(
-                {"password": "Password fields didn't match."})
-
-        return attrs
-
-    def create(self, validated_data):
-        user = User.objects.create(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            hospital=validated_data['hospital'],
-        )
-
-        user.set_password(validated_data['password'])
-        user.save()
-
-        return user
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # serializers.py
-
-# from rest_framework import serializers
-# from .models import User, Hospital
-# from rest_framework_simplejwt.tokens import RefreshToken
-# class UserSerializer(serializers.ModelSerializer):
-#     password = serializers.CharField(write_only=True)
+# class RegisterSerializer(serializers.ModelSerializer):
+#     password = serializers.CharField(
+#         write_only=True, required=True, validators=[validate_password])
+#     password2 = serializers.CharField(write_only=True, required=True)
 
 #     class Meta:
 #         model = User
-#         fields = ['id', 'hospital', 'username', 'password', 'email']
-#         extra_kwargs = {'password': {'write_only': True}}
+#         fields = ('hospital','email', 'username', 'password', 'password2')
+
+#     def validate(self, attrs):
+#         if attrs['password'] != attrs['password2']:
+#             raise serializers.ValidationError(
+#                 {"password": "Password fields didn't match."})
+
+#         return attrs
 
 #     def create(self, validated_data):
 #         user = User.objects.create(
-#             hospital=validated_data['hospital'],
 #             username=validated_data['username'],
 #             email=validated_data['email'],
+#             hospital=validated_data['hospital'],
 #         )
+
 #         user.set_password(validated_data['password'])
 #         user.save()
-#         print(validated_data)
-#         refresh = RefreshToken.for_user(user)
-        
-#         # Return serialized data of the created user along with tokens
-#         return {
-#             'user': self.to_representation(user),  # Ensure user object is returned with key 'user'
-#             'refresh': str(refresh),
-#             'access': str(refresh.access_token)
-#         }
-# class LoginSerializer(serializers.Serializer):
-#     username = serializers.CharField()
-#     password = serializers.CharField()
-# # # serializers.py
-# # from rest_framework import serializers
-# # from .models import Hospital, User
-# # from rest_framework_simplejwt.tokens import RefreshToken
 
-# # class HospitalSerializer(serializers.ModelSerializer):
-# #     class Meta:
-# #         model = Hospital
-# #         fields = '__all__'
-        
-# # class UserSerializer(serializers.ModelSerializer):
-# #     password = serializers.CharField(write_only=True)
+#         return user
 
-# #     class Meta:
-# #         model = User
-# #         fields = ['id', 'hospital', 'username', 'password', 'email']
-# #         extra_kwargs = {'password': {'write_only': True}}
 
-# #     def create(self, validated_data):
-# #         user = User.objects.create(
-# #             hospital=validated_data['hospital'],
-# #             username=validated_data['username'],
-# #             email=validated_data['email'],
-# #         )
-# #         user.set_password(validated_data['password'])
-# #         user.save()
-# #         print(validated_data)
-# #         refresh = RefreshToken.for_user(user)
-        
-# #         # Return serialized data of the created user along with tokens
-# #         return {
-# #             'user': self.to_representation(user),  # Ensure user object is returned with key 'user'
-# #             'refresh': str(refresh),
-# #             'access': str(refresh.access_token)
-# #         }
-# # # class UserSerializer(serializers.ModelSerializer):
-# # #     password = serializers.CharField(write_only=True)  # Define the password field here
-
-# # #     class Meta:
-# # #         model = User
-# # #         fields = ['id', 'hospital', 'username', 'password','email']
-# # #         extra_kwargs = {'password': {'write_only': True}}
-
-# # #     def create(self, validated_data):
-# # #         user = User.objects.create(
-# # #             hospital=validated_data['hospital'],
-# # #             username=validated_data['username']
-# # #         )
-# # #         print('bhai data',validated_data)
-# # #         user.set_password(validated_data['password'])
-# # #         user.save()
-# # #         return user

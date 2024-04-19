@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PatientBilling',
             fields=[
-                ('BillingID', models.AutoField(primary_key=True, serialize=False)),
+                ('BillingID', models.AutoField(primary_key=True,default=False, serialize=False)),
                 ('InvoiceDetails', models.TextField()),
                 ('PatientID', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='patient.patient')),
             ],

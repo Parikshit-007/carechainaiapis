@@ -1,5 +1,5 @@
 # patient/urls.py
-from django.urls import path
+from django.urls import path,include
 from patient.views.views import (
     PatientListCreateView, PatientRetrieveUpdateDestroyView,
     PatientBillingListCreateView, PatientBillingRetrieveUpdateDestroyView,
@@ -10,7 +10,7 @@ from patient.views.views import (
 )
 
 urlpatterns = [
-
+    path('api/auth/', include('hos_login.urls')),
    # patient_dashboard
     path('api/patients/', PatientListCreateView.as_view(), name='api-patient-list-create'),
     path('api/patients/<int:pk>/', PatientRetrieveUpdateDestroyView.as_view(), name='api-patient-retrieve-update-destroy'),

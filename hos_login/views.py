@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from .models import User
+from .models import Custom_User
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -8,7 +8,7 @@ from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from .serializers import LoginSerializer, RegisterSerializer
+from .serializers import LoginSerializer,UserSerializer,CreateUserSerializer,UpdateUserSerializer
 from django.contrib.auth import get_user_model
 
 from django.contrib.auth import login
@@ -19,23 +19,92 @@ from django.contrib.auth.views import LoginView as BaseLoginView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView, UpdateAPIView
 
-@method_decorator(csrf_exempt, name='dispatch')
-class LoginView(APIView):
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+#from rest_framework.authtoken.models import Token
+from django.contrib.auth import get_user_model
+from knox import views as knox_views
+
+class LoginView(knox_views.LoginView):
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data
-            # You can perform further actions here, such as logging in the user
-            return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
+            login(request, user)
+            response = super().post(request, format=None)   
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response.data, status=status.HTTP_200_OK)
+
+# @method_decorator(csrf_exempt, name='dispatch')
+# class LoginView(knox_views.LoginView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request, *args, **kwargs):
+#         serializer = LoginSerializer(data=request.data)
+#         if serializer.is_valid():
+#             user = serializer.validated_data
+#             refresh = RefreshToken.for_user(user)
+#             return Response({
+#                 'refresh': str(refresh),
+#                 'access': str(refresh.access_token),
+#             }, status=status.HTTP_200_OK)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+class LoginAPIView(knox_views.LoginView):
+    permission_classes = (AllowAny, )
+    serializer_class = LoginSerializer
+
+    def post(self, request, format=None):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            user = serializer.validated_data['user']
+            login(request, user)
+            response = super().post(request, format=None)
+        else:
+            return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(response.data, status=status.HTTP_200_OK)
+
+class UpdateUserAPI(UpdateAPIView):
+    queryset = Custom_User.objects.all()
+    serializer_class = UpdateUserSerializer
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"message": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @method_decorator(csrf_exempt, name='dispatch')    
 class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    #queryset = User.objects.all()
     permission_classes = (AllowAny,)
-    serializer_class = RegisterSerializer
+    serializer_class = CreateUserSerializer
+    def post(self, request):
+        serializer= CreateUserSerializer(data= request.data)
+        if serializer.is_valid():
+            serializer.save()
+            user= Custom_User.objects.get(username=serializer.data['username'])
+            print(user)
+           # token_obj = Token.objects.get(user=user)
+          
+            
+            return Response({'user': serializer.data}  , status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 def getRoutes(request):
@@ -59,49 +128,3 @@ def testEndPoint(request):
     return Response({}, status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework import status
-# from rest_framework_simplejwt.tokens import RefreshToken
-# from .serializers import UserSerializer, LoginSerializer
-# from django.contrib.auth import authenticate
-# class SignupView(APIView):
-#     def post(self, request):
-#         serializer = UserSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user_data = serializer.save()
-#             return Response(user_data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# class LoginView(APIView):
-#     def post(self, request):
-#         serializer = LoginSerializer(data=request.data)
-#         print('lee',request.data)
-#         if serializer.is_valid():
-#             username = serializer.validated_data.get('username')
-#             password = serializer.validated_data.get('password')
-#             email = serializer.validated_data.get('email')
-
-#             user = authenticate(request, username=username, password=password, email=email)
-#             if user:
-#                 refresh = RefreshToken.for_user(user)
-#                 return Response({
-#                     'access': str(refresh.access_token),
-#                     'refresh': str(refresh)
-#                 })
-#             else:
-#                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

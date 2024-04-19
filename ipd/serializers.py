@@ -1,6 +1,6 @@
 # ipd/serializers.py
 from rest_framework import serializers
-from ipd.models.models import Bed,Ward, BedAllocation , BedAvailability, BedBooking , BedStatusUpdate ,WardWiseBedReport, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, IPDDepositReport, IPDDischargeReport, DepartmentReport, WardWiseReport, DoctorWiseReport, TPAReport
+from ipd.models.models import Bed,Ward, DischargeHistory,BedAllocation , BedAvailability, BedBooking , BedStatusUpdate ,WardWiseBedReport, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, IPDDepositReport, IPDDischargeReport, DepartmentReport, WardWiseReport, DoctorWiseReport, TPAReport
 
 
 class WardSerializer(serializers.ModelSerializer):
@@ -62,7 +62,10 @@ class IPDAdmitReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = IPDAdmitReport
         fields = '__all__'
-
+class DischargeHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DischargeHistory
+        fields= '__all__'
 class IPDDepositReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = IPDDepositReport

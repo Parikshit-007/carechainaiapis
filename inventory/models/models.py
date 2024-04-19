@@ -52,4 +52,4 @@ class PatientEquipmentUsage(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
     def str(self):
-        return f"Patient ID: {self.patient_id}, Equipment: {self.equipment.name}, Quantity Used: {self.quantity_used}, Usage Date: {self.usage_date}"
+        return f"Patient ID: {self.patient}, Equipment: {self.equipment.name}, Quantity Used: {self.quantity_used}, Usage Date: {self.usage_date}"

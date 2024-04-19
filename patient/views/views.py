@@ -10,30 +10,43 @@ from patient.serializers import (
     PatientReminderSerializer, 
     PatientVisitListSerializer
 )
+# from ...hos_login.permissions import IsHospitalOwner
+from patient.permissions import IsAuthenticatedHospitalOwner
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+
+from hos_login.permissions import IsHospitalOwner  # Import the custom permission class from the login app
+from django.http import JsonResponse
+from rest_framework.response import Response
 
 # Patient API views
+
 class PatientListCreateView(generics.ListCreateAPIView):
-    queryset = Patient.objects.all()
     serializer_class = PatientSerializer
+    permission_classes = [IsHospitalOwner]
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        
+        queryset = Patient.objects.filter(owner=self.request.user)
         search_query = self.request.query_params.get('search', None)
         if search_query:
-        
             if search_query.isdigit():
                 queryset = queryset.filter(PatientID=int(search_query))
             else:
                 queryset = queryset.filter(fullname__icontains=search_query)
         return queryset
 
-
-
-
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 class PatientRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
+    permission_classes = [IsAuthenticated, IsHospitalOwner] 
 
 # PatientBilling API views
 class PatientBillingListCreateView(generics.ListCreateAPIView):

@@ -4,10 +4,11 @@ from rest_framework import generics
 from ipd.models.models import (
     BedAllocation, BedAvailability, BedBooking, BedStatusUpdate, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, 
     IPDDepositReport, IPDDischargeReport, DepartmentReport, Ward, 
-    WardWiseReport, DoctorWiseReport, TPAReport, Bed
+    WardWiseReport, DoctorWiseReport, TPAReport, Bed,DischargeHistory
 ) 
 from ipd.models.models import Bed
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 
 from django.db import transaction
 
@@ -15,7 +16,7 @@ from ipd.serializers import (
     IPDRegistrationSerializer, IPDDepositSerializer, IPDDischargeSerializer, 
     IPDAdmitReportSerializer, IPDDepositReportSerializer, IPDDischargeReportSerializer,
     DepartmentReportSerializer, WardSerializer, WardWiseReportSerializer, DoctorWiseReportSerializer, TPAReportSerializer , BedSerializer, BedBookingSerializer, BedAllocationSerializer, \
-    BedStatusUpdateSerializer, BedAvailabilitySerializer
+    BedStatusUpdateSerializer, BedAvailabilitySerializer,DischargeHistorySerializer
 )
 from rest_framework import status
 from rest_framework.response import Response
@@ -89,47 +90,55 @@ class IPDRegistrationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPI
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        bed_number = request.data.get('bed')
         ward_id = request.data.get('ward')
+        bed_id = request.data.get('bed')
         patient_id = request.data.get('patient')
-        print('bed num:',bed_number)
 
-        print('bed id num:',bed_number)
-        print('ward_id:',ward_id)
-        if not bed_number or not ward_id or not patient_id:
+        if not bed_id or not ward_id or not patient_id:
             return Response({"message": "Bed number, ward ID, and patient ID are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            ward = Ward.objects.get(pk=ward_id)
-            bed = Bed.get_available_bed(bed_number, ward_id )
-          
-            if bed is None:
-                return Response({"message": "Selected bed is not available"}, status=status.HTTP_400_BAD_REQUEST)
+            bed = Bed.objects.get(id=bed_id)
+        except Bed.DoesNotExist:
+            raise Http404("Bed does not exist")
 
-        except Ward.DoesNotExist:
+        ward = Ward.objects.get(pk=ward_id)
+
+        if not ward:
             return Response({"message": "Ward does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if an IPD registration with the same patient and ward already exists
-        if IPDRegistration.objects.filter(patient_id=patient_id, ward_id=ward_id).exists():
+        if IPDRegistration.objects.filter(patient_id=patient_id, ward_id=ward_id).exclude(pk=instance.pk).exists():
             return Response({"message": "IPD registration with this bed already exists for the patient"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Mark the previously assigned bed as unavailable
-        if instance.bed:
-            instance.bed.is_available = False
-            instance.bed.save()
+        ipd_registration_data = {
+            'patient': patient_id,
+            'admission_date': request.data.get('admission_date'),
+            'ward': ward_id,
+            'bed': bed_id
+        }
 
-        serializer = self.get_serializer(instance, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        ipd_registration_serializer = self.get_serializer(instance, data=ipd_registration_data)
+        ipd_registration_serializer.is_valid(raise_exception=True)
+        self.perform_update(ipd_registration_serializer)
 
-        # Mark the newly assigned bed as unavailable
-        bed.is_available = False
-        bed.save()
+        return Response(ipd_registration_serializer.data)
 
-        return Response(serializer.data)
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        bed = instance.bed
+        if bed:
+            bed.is_available = True
+            bed.save()
+
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class IPDDepositListCreateView(generics.ListCreateAPIView):
     queryset = IPDDeposit.objects.all()
     serializer_class = IPDDepositSerializer
+    
 
 class IPDDepositRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = IPDDeposit.objects.all()
@@ -138,6 +147,40 @@ class IPDDepositRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
 class IPDDischargeListCreateView(generics.ListCreateAPIView):
     queryset = IPDDischarge.objects.all()
     serializer_class = IPDDischargeSerializer
+    
+    @transaction.atomic
+    def post(self, request, format=None):
+        admission_id = request.data.get('admission')
+        discharge_date = request.data.get('discharge_date')
+        
+        if not admission_id or not discharge_date:
+            return Response({"message": "Admission ID and discharge date are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        ipd_registration = get_object_or_404(IPDRegistration, pk=admission_id)
+
+        if ipd_registration.is_discharged:
+            return Response({"message": "Patient is already discharged"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = IPDDischargeSerializer(data=request.data)
+        if serializer.is_valid():
+            # Create IPDDischarge instance
+            discharge_instance = serializer.save(admission=ipd_registration, discharge_date=discharge_date)
+
+            # Update IPDRegistration to mark patient as discharged
+            ipd_registration.is_discharged = True
+            ipd_registration.discharge_date = discharge_date
+            ipd_registration.save()
+
+            # Move patient details to discharge history
+            DischargeHistory.objects.create(patient=ipd_registration.patient, discharge_date=discharge_date)
+
+            # Delete the IPDRegistration instance
+            ipd_registration.delete()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class IPDDischargeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = IPDDischarge.objects.all()
@@ -150,6 +193,10 @@ class IPDAdmitReportListCreateView(generics.ListCreateAPIView):
 class IPDAdmitReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = IPDAdmitReport.objects.all()
     serializer_class = IPDAdmitReportSerializer
+
+class DischargeHistory(generics.ListCreateAPIView):
+    queryset= DischargeHistory.objects.all()
+    serializer_class = DischargeHistorySerializer
 
 class IPDDepositReportListCreateView(generics.ListCreateAPIView):
     queryset = IPDDepositReport.objects.all()

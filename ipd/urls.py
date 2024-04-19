@@ -9,7 +9,7 @@ from ipd.views.views import (
     DepartmentReportListCreateView, DepartmentReportRetrieveUpdateDestroyView, WardListCreateView, WardRetrieveUpdateDestroyView,
     WardWiseReportListCreateView, WardWiseReportRetrieveUpdateDestroyView,
     DoctorWiseReportListCreateView, DoctorWiseReportRetrieveUpdateDestroyView,
-    TPAReportListCreateView, TPAReportRetrieveUpdateDestroyView,
+    TPAReportListCreateView, TPAReportRetrieveUpdateDestroyView,DischargeHistory,
     # Import the newly added views
     BedListCreateView, BedRetrieveUpdateDestroyView,
     BedBookingListCreateView, BedBookingRetrieveUpdateDestroyView,
@@ -19,6 +19,7 @@ from ipd.views.views import (
 )
 
 urlpatterns = [
+    path('ipd-DischargeHistory', DischargeHistory.as_view(), name= 'ipd-discharge-history' ),
     path('ipd-registrations/', IPDRegistrationListCreateView.as_view(), name='ipd-registration-list-create'),
     path('ipd-registrations/<int:pk>/', IPDRegistrationRetrieveUpdateDestroyView.as_view(), name='ipd-registration-retrieve-update-destroy'),
 
