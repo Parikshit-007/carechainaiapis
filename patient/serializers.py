@@ -1,11 +1,26 @@
 # patient/serializers.py
 from rest_framework import serializers
 from patient.models.models import Patient, PatientBilling, PatientHistory, PatientLedger, PatientReminder, PatientVisitList
+from rest_framework.exceptions import PermissionDenied
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = '__all__'
+        read_only_fields = ['owner']  # owner ko read-only banate hain
+
+    def create(self, validated_data):
+        # current user ko fetch karna
+        user = self.context['request'].user
+
+        # check if the user is authenticated
+        if not user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a patient.")
+
+        # set the owner field
+        validated_data['owner'] = user
+
+        return super().create(validated_data)
 
 class PatientBillingSerializer(serializers.ModelSerializer):
     class Meta:

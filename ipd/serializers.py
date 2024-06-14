@@ -1,13 +1,29 @@
 # ipd/serializers.py
 from rest_framework import serializers
 from ipd.models.models import Bed,Ward, DischargeHistory,BedAllocation , BedAvailability, BedBooking , BedStatusUpdate ,WardWiseBedReport, IPDRegistration, IPDDeposit, IPDDischarge, IPDAdmitReport, IPDDepositReport, IPDDischargeReport, DepartmentReport, WardWiseReport, DoctorWiseReport, TPAReport
-
+from rest_framework.exceptions import PermissionDenied
 
 class WardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ward
         fields = '__all__'
+        read_only_fields = ['owner']  # owner ko read-only banate hain
+
+    def create(self, validated_data):
+        # current user ko fetch karna
+        user = self.context['request'].user
+
+        # check if the user is authenticated
+        if not user.is_authenticated:
+            raise PermissionDenied("Authentication required to create a patient.")
+
+        # set the owner field
+        validated_data['owner'] = user
+
+        return super().create(validated_data)
+
 class BedSerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username') 
     ward = WardSerializer()
     class Meta:
         model = Bed
@@ -52,26 +68,47 @@ class IPDDepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = IPDDeposit
         fields = '__all__'
-
 class IPDDischargeSerializer(serializers.ModelSerializer):
+    admission = serializers.PrimaryKeyRelatedField(queryset=IPDRegistration.objects.all())
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = IPDDischarge
-        fields = '__all__'
+        fields = ('discharge_id', 'admission', 'discharge_date', 'discharge_summary', 'owner')
+# class IPDDischargeSerializer(serializers.ModelSerializer):
+#     owner = serializers.PrimaryKeyRelatedField(read_only=True)
+
+#     class Meta:
+#         model = IPDDischarge
+#         fields = ['admission', 'discharge_date', 'owner']
+
+#     def create(self, validated_data):
+#         request = self.context.get('request')
+#         if request and hasattr(request, 'user'):
+#             validated_data['owner'] = request.user
+#         return super().create(validated_data)
+
 
 class IPDAdmitReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = IPDAdmitReport
         fields = '__all__'
 class DischargeHistorySerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username') 
+
     class Meta:
         model = DischargeHistory
         fields= '__all__'
 class IPDDepositReportSerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username') 
+
     class Meta:
         model = IPDDepositReport
         fields = '__all__'
 
 class IPDDischargeReportSerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username') 
+
     class Meta:
         model = IPDDischargeReport
         fields = '__all__'

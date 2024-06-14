@@ -74,20 +74,29 @@ class LoginAPIView(knox_views.LoginView):
 class UpdateUserAPI(UpdateAPIView):
     queryset = Custom_User.objects.all()
     serializer_class = UpdateUserSerializer
+    
+from knox.views import LogoutView as KnoxLogoutView
 
-
-class LogoutView(APIView):
+class CustomLogoutView(KnoxLogoutView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        try:
-            refresh_token = request.data["refresh"]
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"message": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+        # Knox logout implementation, which deletes the token
+        super().post(request, *args, **kwargs)
+        
+        return Response(
+            {"message": "You have successfully logged out. Thank you for using our service!"},
+            status=status.HTTP_200_OK  # Use HTTP_200_OK to ensure the message is sent in the response
+        )
+class LogoutView(knox_views.LogoutView):
+    permission_classes = [IsAuthenticated] 
 
+    def post(self, request, *args, **kwargs):
+        request._auth.delete()  
+        return Response(
+            {"message": "Successfully logged out"},
+            status=status.HTTP_204_NO_CONTENT  
+        )
 
 @method_decorator(csrf_exempt, name='dispatch')    
 class RegisterView(generics.CreateAPIView):
@@ -102,6 +111,8 @@ class RegisterView(generics.CreateAPIView):
             print(user)
            # token_obj = Token.objects.get(user=user)
           
+            
+
             
             return Response({'user': serializer.data}  , status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
