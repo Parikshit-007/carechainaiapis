@@ -7,7 +7,7 @@ from opd.models.models import OPD_REGISTER, OPD_Billing, OPD_REPORT, OPD_PRESCRI
 
 @admin.register(OPD_REGISTER)
 class OPD_REGISTERAdmin(admin.ModelAdmin):
-    list_display = ('visit_id', 'patient_id', 'visit_date', 'doctor_id', 'ddepartment')
+    list_display = ('visit_id', 'patient_id', 'visit_date', 'doctor_id', 'department')
 
 @admin.register(OPD_Billing)
 class OPD_BillingAdmin(admin.ModelAdmin):

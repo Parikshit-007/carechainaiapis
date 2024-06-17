@@ -1,4 +1,5 @@
 # views.py
+from django.forms import ValidationError
 from django.http import Http404
 from rest_framework import generics
 from ipd.models.models import (
@@ -57,7 +58,8 @@ class IPDRegistrationListCreateView(generics.ListCreateAPIView):
             'admission_date': request.data.get('admission_date'),
             'ward': ward_id,
             'bed': bed.id,
-            'owner': request.user.id  # Set the owner field
+            'owner': request.user.id , # Set the owner field
+            'discharge_date': None,
         }
 
         ipd_registration_serializer = self.get_serializer(data=ipd_registration_data)
@@ -166,12 +168,10 @@ class IPDDischargeListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]  # Only authenticated users can access
     queryset = IPDDischarge.objects.all()
     serializer_class = IPDDischargeSerializer
-    
+
     def get_success_header(self, data):
-        """
-        Overide to customize headers upon successful creation.
-        """
         return {'Content-Type': 'application/json'}
+
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -181,8 +181,74 @@ class IPDDischargeListCreateView(generics.ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user) 
-          # Set owner to current user  
+        ipd_registration_id = self.request.data.get('admission')
+        discharge_date_str = self.request.data.get('discharge_date')
+
+        if not ipd_registration_id or not discharge_date_str:
+            raise ValidationError("IPD Registration ID and discharge date are required")
+
+        # Parse the discharge date string to a date object
+        discharge_date = timezone.datetime.strptime(discharge_date_str, '%Y-%m-%d').date()
+
+        ipd_registration = IPDRegistration.objects.get(admission_id=ipd_registration_id)
+        serializer.save(admission=ipd_registration, discharge_date=discharge_date, owner=self.request.user)
+
+class IPDDischargeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = IPDDischarge.objects.all()
+    serializer_class = IPDDischargeSerializer
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Update the discharge date of the IPD registration
+        admission = instance.admission
+        ipd_registration = admission
+
+        discharge_date_str = self.request.data.get('discharge_date')
+        discharge_date = timezone.datetime.strptime(discharge_date_str, '%Y-%m-%d').date()
+
+        ipd_registration.discharge_date = discharge_date
+        ipd_registration.is_discharged = True
+        ipd_registration.save()
+
+        # Mark the bed as available
+        bed = admission.bed
+        if bed:
+            bed.is_available = True
+            bed.save()
+
+        # Delete the IPDRegistration instance
+        admission.delete()
+
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Update the discharge date of the IPD registration
+        admission = instance.admission
+        ipd_registration = admission
+
+        discharge_date_str = self.request.data.get('discharge_date')
+        discharge_date = timezone.datetime.strptime(discharge_date_str, '%Y-%m-%d').date()
+
+        ipd_registration.discharge_date = discharge_date
+        ipd_registration.is_discharged = True
+        ipd_registration.save()
+
+        # Mark the bed as available
+        bed = admission.bed
+        if bed:
+            bed.is_available = True
+            bed.save()
+
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class IPDDischargeDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]  # Only authenticated users can access
@@ -191,9 +257,9 @@ class IPDDischargeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-class IPDDischargeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = IPDDischarge.objects.all()
-    serializer_class = IPDDischargeSerializer
+# class IPDDischargeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = IPDDischarge.objects.all()
+#     serializer_class = IPDDischargeSerializer
 
 class IPDAdmitReportListCreateView(generics.ListCreateAPIView):
     queryset = IPDAdmitReport.objects.all()

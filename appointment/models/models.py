@@ -1,6 +1,7 @@
 from django.db import models
 from doctor.models.models import Doctor
 from patient.models.models import Patient
+from hos_login.models import Custom_User
 TIME_SLOTS = [
     ('9:30-9:40', '9:30 AM - 9:40 AM'),
     ('9:40-9:50', '9:40 AM - 9:50 AM'),
@@ -65,6 +66,7 @@ class Appointment(models.Model):
     patient = models.ForeignKey( Patient , on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
    # clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE)
-    date = models.DateTimeField()
+    owner= models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
+    date = models.DateField()
     time_slot = models.CharField(max_length=20, choices=TIME_SLOTS)
     status = models.CharField(max_length=20, choices=status_choices, default='available')

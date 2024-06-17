@@ -1,4 +1,6 @@
 from django.db import models
+
+from hos_login.models import Custom_User
 #from django.contrib.auth.models import User
 # Create your models here.
 class Doctor(models.Model):
@@ -9,6 +11,7 @@ class Doctor(models.Model):
       #  ('Other', 'Other'),
     ]
     DoctorID = models.AutoField(primary_key=True)
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
     name= models.CharField(max_length=200)
     email = models.EmailField(blank=True, null=True)
     phone_number = models.CharField(max_length=20)

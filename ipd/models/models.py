@@ -94,7 +94,7 @@ class IPDRegistration(models.Model):
     admission_date = models.DateField()
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE)
     bed = models.OneToOneField(Bed, on_delete=models.CASCADE)
-    discharge_date = models.DateTimeField(null=True, blank=True)
+    discharge_date = models.DateField(null=True, blank=True)
     is_discharged = models.BooleanField(default=False)
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None) 
 
@@ -167,7 +167,7 @@ def handle_discharge(sender, instance, **kwargs):
         #     instance.save()
 class DischargeHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    discharge_date = models.DateField()
+    discharge_date = models.DateField(null=True, blank=True)
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None,null=True) 
 
     def __str__(self):
@@ -176,30 +176,31 @@ class DischargeHistory(models.Model):
 class IPDDischarge(models.Model):
     discharge_id = models.AutoField(primary_key=True)
     admission = models.OneToOneField(IPDRegistration, on_delete=models.CASCADE)
-    discharge_date = models.DateField()
+    discharge_date = models.DateField(null=True, blank=True)
     discharge_summary = models.TextField()
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None,null=True) 
 @receiver(post_save, sender=IPDDischarge)
 def move_to_discharge_history(sender, instance, created, **kwargs):
     if created:
         discharged_patient = instance.admission.patient
-        # Create a record in the discharge history (optional)
-        # ...
+        # Create a record in the discharge history
+        DischargeHistory.objects.create(patient=discharged_patient, discharge_date=instance.discharge_date, owner=instance.owner)
 
         # Update the IPDRegistration instance to mark it as discharged
         admission = instance.admission
         admission.is_discharged = True
+        admission.discharge_date = instance.discharge_date
         admission.save()
+
         # Mark the bed as available again (assuming one-to-one relationship)
-        bed = instance.admission.bed
+        bed = admission.bed
         if bed:
             bed.is_available = True
             bed.save()
 
-        # Update the IPDRegistration instance to mark it as discharged
-        admission = instance.admission
-        admission.is_discharged = True
-        admission.save()
+        # Delete the IPDRegistration instance
+        admission.delete()
+
 
 class BedBooking(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
