@@ -2,8 +2,12 @@
 from rest_framework import serializers
 from patient.models.models import Patient, PatientBilling, PatientHistory, PatientLedger, PatientReminder, PatientVisitList
 from rest_framework.exceptions import PermissionDenied
+from django.utils.dateparse import parse_datetime
 
 class PatientSerializer(serializers.ModelSerializer):
+    Register_Date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d"])
+
+
     class Meta:
         model = Patient
         fields = '__all__'

@@ -1,5 +1,6 @@
 from django.db import models
 from hos_login.models import Custom_User
+from django.utils import timezone
 
 class Patient(models.Model):
     GENDER_CHOICES = [
@@ -38,7 +39,10 @@ class Patient(models.Model):
     Insurance_Provider = models.CharField(max_length=100, blank=True)   
     Gender = models.CharField(max_length=10)  
     DOB = models.DateField()
+    Register_Date = models.DateField()
+
     PinCode = models.CharField(max_length=10, blank=True, null=True) 
+    #Register_Date = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"{self.fullname} - Admission ID: {self.PatientID} "

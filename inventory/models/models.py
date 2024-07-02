@@ -10,7 +10,7 @@ class Medicine(models.Model):
     expiration_date = models.DateField()
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
 
-    def __str__(self):
+    def _str_(self):
         return self.name
 
 class Equipment(models.Model):
@@ -21,7 +21,7 @@ class Equipment(models.Model):
     purchase_date = models.DateField()
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
 
-    def __str__(self):
+    def _str_(self):
         return self.name
 
 class StockLevelAlert(models.Model):
@@ -29,7 +29,7 @@ class StockLevelAlert(models.Model):
     threshold_quantity = models.PositiveIntegerField()
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
 
-    def __str__(self):
+    def _str_(self):
         return f"{self.inventory_item} - Threshold: {self.threshold_quantity}"
 
 class PurchaseOrder(models.Model):
@@ -38,15 +38,21 @@ class PurchaseOrder(models.Model):
     order_date = models.DateField(auto_now_add=True)
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
 
-    def __str__(self):
+    def _str_(self):
         return f"{self.inventory_item} - Quantity: {self.quantity_to_order}"
 
 class InventoryItem(models.Model):
     name = models.CharField(max_length=100)
-    description = models.TextField()
+    medicine_manufacturer  = models.CharField(max_length=100,default=None)
+    medicine_name = models.CharField(max_length=100,default=None)
+    sale_price=  models.DecimalField(max_digits=10, decimal_places=2,default=None)
+    description = models.TextField(default=None)
+    quantity = models.PositiveIntegerField(default=0)
+    expiration_date = models.DateField(default=None)
+   # amount = models.DecimalField(max_digits=10, decimal_places=2)
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
 
-    def __str__(self):
+    def _str_(self):
         return self.name
 
 class PatientEquipmentUsage(models.Model):
@@ -57,5 +63,16 @@ class PatientEquipmentUsage(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
 
-    def __str__(self):
+    def _str_(self):
+        return f"Patient ID: {self.patient}, Equipment: {self.equipment.name}, Quantity Used: {self.quantity_used}, Usage Date: {self.usage_date}"
+
+class MedicineEquipmentUsage(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
+    quantity_used = models.PositiveIntegerField(default=0)
+    usage_date = models.DateField(auto_now_add=True)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
+
+    def _str_(self):
         return f"Patient ID: {self.patient}, Equipment: {self.equipment.name}, Quantity Used: {self.quantity_used}, Usage Date: {self.usage_date}"

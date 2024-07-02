@@ -1,5 +1,3 @@
-# views.py
-
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -7,9 +5,12 @@ from appointment.models.models import Appointment
 from appointment.serializers import AppointmentSerializer
 
 class AppointmentListCreateView(generics.ListCreateAPIView):
-    queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return appointments that belong to the authenticated user
+        return Appointment.objects.filter(owner=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -28,6 +29,9 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class AppointmentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return appointments that belong to the authenticated user
+        return Appointment.objects.filter(owner=self.request.user)

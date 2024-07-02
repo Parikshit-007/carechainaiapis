@@ -25,4 +25,9 @@ class Doctor(models.Model):
     working_details= models.CharField(max_length =100)
     identity_proof=models.FileField(upload_to='identity_proofs/')
     medical_liscence=  models.FileField(upload_to='medical_licenses/')
-
+    def save(self, *args, **kwargs):
+        if not self.DoctorID:
+            max_id = Doctor.objects.aggregate(models.Max('DoctorID'))['DoctorID__max'] or 0
+            owner_id = self.owner.pk if self.owner else 0
+            self.DoctorID = (owner_id * 1000) + max_id + 1
+        super().save(*args, **kwargs)

@@ -12,10 +12,10 @@ class BedManager(models.Manager):
 
 class Ward(models.Model):
     name = models.CharField(max_length=50)
-    daily_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Daily charge for the ward
-
+    daily_charge = models.PositiveIntegerField( default=0)  # Daily charge for the ward
     total_beds = models.PositiveIntegerField(default=0)  # Total number of beds for the ward
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None) 
+
 
     def __str__(self):
         return f"{self.name}"
@@ -146,10 +146,13 @@ def handle_discharge(sender, instance, **kwargs):
         # Create IPDDischarge instance
         discharge_instance, created = IPDDischarge.objects.get_or_create(admission=instance)
         discharge_instance.discharge_date = instance.discharge_date
+      # discharge_instance.ward= instance.ward
+        # ward=instance.ward
+        discharge_instance.admission_date= instance.admission_date
         discharge_instance.save()
-
+        
         # Move patient details to discharge history
-        DischargeHistory.objects.create(patient=instance.patient, discharge_date=instance.discharge_date)
+        DischargeHistory.objects.create(patient=instance.patient, admission_date=instance.admission_date,discharge_date=instance.discharge_date)
 
         # Mark the bed as available again
         # bed = instance.bed
@@ -166,28 +169,46 @@ def handle_discharge(sender, instance, **kwargs):
         #     instance.patient.delete()
         #     instance.save()
 class DischargeHistory(models.Model):
+    # addmission_date = models.DateField(default=None) 
+    #ward = models.ForeignKey(Ward, on_delete=models.CASCADE)
+
+    admission_date= models.DateField(default=None)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     discharge_date = models.DateField(null=True, blank=True)
-    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None,null=True) 
-
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None,null=True)
     def __str__(self):
+        return f"{self.patient.fullname} - Discharge Date: {self.discharge_date}"
+    def calculate_total_charges(self):
+        if self.addmission_date and self.discharge_date:
+            duration = self.discharge_date - self.addmission_date
+            total_days = duration.days + 1
+            ward_daily_charge = self.patient.ipdregistration_set.first().ward.daily_charge
+            total_charges = total_days * ward_daily_charge
+            return total_charges
+        return 0
+    
+    def _str_(self):
         return f"{self.patient.fullname} - Discharge Date: {self.discharge_date}"
 
 class IPDDischarge(models.Model):
     discharge_id = models.AutoField(primary_key=True)
     admission = models.OneToOneField(IPDRegistration, on_delete=models.CASCADE)
     discharge_date = models.DateField(null=True, blank=True)
+    admission_date = models.DateField(default=None) 
     discharge_summary = models.TextField()
+    #ward = models.ForeignKey(Ward, on_delete=models.CASCADE)
     owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None,null=True) 
 @receiver(post_save, sender=IPDDischarge)
 def move_to_discharge_history(sender, instance, created, **kwargs):
     if created:
         discharged_patient = instance.admission.patient
         # Create a record in the discharge history
-        DischargeHistory.objects.create(patient=discharged_patient, discharge_date=instance.discharge_date, owner=instance.owner)
+        DischargeHistory.objects.create(patient=discharged_patient, discharge_date=instance.discharge_date, owner=instance.owner, admission_date=instance.admission_date)
 
         # Update the IPDRegistration instance to mark it as discharged
         admission = instance.admission
+        #ward = instance.ward
+        admission_date = instance.admission_date,  # Add admission_date here
         admission.is_discharged = True
         admission.discharge_date = instance.discharge_date
         admission.save()

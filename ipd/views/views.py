@@ -56,6 +56,7 @@ class IPDRegistrationListCreateView(generics.ListCreateAPIView):
         ipd_registration_data = {
             'patient': patient_id,
             'admission_date': request.data.get('admission_date'),
+            # 'ward' = instance.ward
             'ward': ward_id,
             'bed': bed.id,
             'owner': request.user.id , # Set the owner field
@@ -84,7 +85,8 @@ class WardListCreateView(generics.ListCreateAPIView):
         data = {
             'name': request.data.get('name'),
             'total_beds': request.data.get('total_beds', 0),
-            'owner': request.user  # Set the owner field
+            'owner': request.user  ,
+            'daily_charge':request.data.get('daily_charge',0),
         }
 
         serializer = self.get_serializer(data=data)
@@ -183,15 +185,32 @@ class IPDDischargeListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         ipd_registration_id = self.request.data.get('admission')
         discharge_date_str = self.request.data.get('discharge_date')
-
+        # admission_date =  self.request.data.get('admission_date')
         if not ipd_registration_id or not discharge_date_str:
             raise ValidationError("IPD Registration ID and discharge date are required")
-
+        
         # Parse the discharge date string to a date object
         discharge_date = timezone.datetime.strptime(discharge_date_str, '%Y-%m-%d').date()
-
         ipd_registration = IPDRegistration.objects.get(admission_id=ipd_registration_id)
-        serializer.save(admission=ipd_registration, discharge_date=discharge_date, owner=self.request.user)
+        #ipd_registration_ward = IPDRegistration.objects.get(ward=ipd_registration_id)
+        admission_date = ipd_registration.admission_date
+        #ward = ipd_registration.ward
+        print('dekh', admission_date)
+         # Save to IPDDischarge
+        instance = serializer.save(admission=ipd_registration,admission_date=admission_date,discharge_date=discharge_date, owner=self.request.user)
+
+        # Save to DischargeHistory
+        DischargeHistoryModel.objects.create(
+            patient=ipd_registration.patient,
+            admission_date=ipd_registration.admission_date,  # Assuming admission_date is a field in IPDRegistration
+            discharge_date=discharge_date,
+            #ward = ipd_registration.ward,
+            owner=self.request.user
+        )
+        duration = discharge_date - admission_date
+        total_days = duration.days
+
+        print(f"Total days between admission and discharge: {total_days}")
 
 class IPDDischargeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = IPDDischarge.objects.all()

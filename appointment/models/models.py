@@ -68,5 +68,5 @@ class Appointment(models.Model):
    # clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE)
     owner= models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None)
     date = models.DateField()
-    time_slot = models.CharField(max_length=20, choices=TIME_SLOTS)
+    time_slot = models.CharField(max_length=20, default=None)
     status = models.CharField(max_length=20, choices=status_choices, default='available')

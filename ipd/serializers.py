@@ -74,7 +74,7 @@ class IPDDischargeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = IPDDischarge
-        fields = ('discharge_id', 'admission', 'discharge_date', 'discharge_summary', 'owner')
+        fields = ('discharge_id', 'admission','admission_date' ,'discharge_date', 'discharge_summary', 'owner')
     def create(self, validated_data):
         discharge = super().create(validated_data)
         # Additional logic can go here if needed
