@@ -1,3 +1,4 @@
+
 """
 Django settings for hms_ccai project.
 
@@ -26,11 +27,11 @@ SECRET_KEY = 'django-insecure-et+d@@7n^2q87xmx1l@v=k-_*q+dx#i9*_wlt(5_n=e%6r$upf
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-DJONGO_DEBUG = True
+#DJONGO_DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','172.31.38.125','13.51.169.60']
+ALLOWED_HOSTS = ['127.0.0.1','51.20.55.76','www.carechainaihmsbackend.tech','carechainaihmsbackend.tech']
 
-CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000']
+CSRF_TRUSTED_ORIGINS = ['https://carechainaihmsbackend.tech/','https://www.carechainaihmsbackend.tech/']
 # Application definition
 
 INSTALLED_APPS = [
@@ -69,9 +70,26 @@ REST_FRAMEWORK = {
 
      ]
 }
+CORS_ORIGIN_ALLOW_ALL = False  # Set to True if allowing all origins
+CORS_ORIGIN_WHITELIST = [
+    'https://ccaihms.tech',  # Example: Whitelist your frontend domain
+    'https://carechainaihmsbackend.tech',
+]
+from rest_framework.settings import api_settings
+
+KNOX_TOKEN_MODEL = 'knox.AuthToken'
 
 REST_KNOX = {
-    'USER_SERIALIZER': 'hos_login.serializers.UserSerializer',
+#    'SECURE_HASH_ALGORITHM': 'hashlib.sha512',
+  'AUTH_TOKEN_CHARACTER_LENGTH': 64,
+'TOKEN_LIMIT_PER_USER': None,
+  'AUTO_REFRESH': False,
+  'MIN_REFRESH_INTERVAL': 60,
+  'AUTH_HEADER_PREFIX': 'Token',
+  'EXPIRY_DATETIME_FORMAT': api_settings.DATETIME_FORMAT,
+  'TOKEN_MODEL': 'knox.AuthToken',
+
+   'USER_SERIALIZER': 'hos_login.serializers.UserSerializer',
     'TOKEN_TTL': timedelta(hours=48)
 }
 #REST_FRAMEWORK = {
@@ -171,6 +189,12 @@ DATABASES = {
     }
 }
 
+
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = TrueSECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators

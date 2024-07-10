@@ -11,7 +11,7 @@ from patient.serializers import (
     PatientVisitListSerializer
 )
 from rest_framework import status
-
+from knox.auth import TokenAuthentication
 # from ...hos_login.permissions import IsHospitalOwner
 from patient.permissions import IsAuthenticatedHospitalOwner
 from rest_framework import generics
@@ -56,6 +56,7 @@ class AssignOwnerMixin:
 
 class PatientListCreateView(generics.ListCreateAPIView):
     serializer_class = PatientSerializer
+#    authentication_classes = (TokenAuthentication,)
     permission_classes = [IsAuthenticated]  # Ensure that only authenticated users can access this view
 
     def perform_create(self, serializer):
@@ -136,7 +137,9 @@ class PatientReminderRetrieveUpdateDestroyView(OwnerBasedQuerysetMixin, AssignOw
 class PatientVisitListListCreateView(OwnerBasedQuerysetMixin, AssignOwnerMixin, generics.ListCreateAPIView):
     queryset = PatientVisitList.objects.all()
     serializer_class = PatientVisitListSerializer
+ #   authentication_classes = (TokenAuthentication,)
 
 class PatientVisitListRetrieveUpdateDestroyView(OwnerBasedQuerysetMixin, AssignOwnerMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = PatientVisitList.objects.all()
     serializer_class = PatientVisitListSerializer
+  #  authentication_classes = (TokenAuthentication,)

@@ -81,7 +81,7 @@ class LoginSerializer(serializers.Serializer):
             # Instantiate the custom authentication backend
             backend = CustomUserModelBackend()
             user = backend.authenticate(request=self.context.get('request'), username=username, password=password)
-            print('dekh',user)
+#            print('dekh',user)
             if user:
                 return user
             else:
