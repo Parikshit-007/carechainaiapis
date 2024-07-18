@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'doctor',
    'staff',
     'inventory',
+    'hospital',
     'emergency',
     'appointment',
     # 'analytics',
