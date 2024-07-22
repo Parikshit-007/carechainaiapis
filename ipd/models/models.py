@@ -12,81 +12,23 @@ class BedManager(models.Manager):
 
 class Ward(models.Model):
     name = models.CharField(max_length=50)
-    daily_charge = models.PositiveIntegerField( default=0)  # Daily charge for the ward
-    total_beds = models.PositiveIntegerField(default=0)  # Total number of beds for the ward
-    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None) 
-
+    daily_charge = models.PositiveIntegerField(default=0)
+    total_beds = models.PositiveIntegerField(default=0)
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None)
 
     def __str__(self):
         return f"{self.name}"
-@receiver(post_save, sender=Ward)
-def update_beds(sender, instance, created, **kwargs):
-    if not created:
-        # If the ward is not newly created
-        # Get the total number of beds in the ward
-        total_beds = instance.total_beds
-
-        # Get the current number of beds in the ward
-        current_beds_count = instance.bed_set.count()
-
-        if current_beds_count < total_beds:
-            # If the current number of beds is less than the total, create additional beds
-            beds_to_create = []
-            for bed_number in range(current_beds_count + 1, total_beds + 1):
-                beds_to_create.append(Bed(ward=instance, number=str(bed_number), is_available=True, owner=instance.owner))
-            Bed.objects.bulk_create(beds_to_create)
-        elif current_beds_count > total_beds:
-            # If the current number of beds is more than the total, delete excess beds
-            beds_to_delete = instance.bed_set.order_by('-number')[:current_beds_count - total_beds]
-            for bed in beds_to_delete:
-                bed.delete()
-    
 
 class Bed(models.Model):
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE)
     number = models.CharField(max_length=20)
     is_available = models.BooleanField(default=True)
-    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None) 
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None)
 
     objects = BedManager()
-    @receiver(post_save, sender=Ward)
-    def create_beds(sender, instance, created, **kwargs):
-      if created:
-        total_beds = instance.total_beds
-        beds_to_create = []
-        # Get the maximum bed number for the specific ward
-        max_bed_number = instance.bed_set.aggregate(models.Max('number'))['number__max']
-        if max_bed_number is None:
-            max_bed_number = 0
-        # Start bed numbering from the next number after the maximum bed number
-        for bed_number in range(1, total_beds + 1):
-            beds_to_create.append(Bed(ward=instance, number=str(max_bed_number + bed_number), is_available=True, owner=instance.owner))
-        Bed.objects.bulk_create(beds_to_create)
-    
-    # @receiver(post_save, sender=Ward)
-    # def create_beds(sender, instance, created, **kwargs):
-    #     if created:
-    #        total_beds = instance.total_beds
-    #        beds_to_create = []
-    #        for bed_number in range(1, total_beds + 1):
-    #           beds_to_create.append(Bed(ward=instance, number=str(bed_number), is_available=True, owner=instance.owner))
-    #        Bed.objects.bulk_create(beds_to_create)
-
-
-    def is_available_in_ward(self, ward):
-        return self.ward == ward and self.is_available
-    
-    
-
-    @classmethod
-    def get_available_bed(cls, number, ward_id):
-        try:
-            return cls.objects.get(number=number, ward_id=ward_id, is_available=True)
-        except cls.DoesNotExist:
-            return None
 
     def __str__(self):
-        return f"Ward Name: {self.ward.name} Bed No:{self.number}"
+        return f"Ward Name: {self.ward.name} Bed No: {self.number}"
 
 class IPDRegistration(models.Model):
     admission_id = models.AutoField(primary_key=True)
@@ -96,32 +38,75 @@ class IPDRegistration(models.Model):
     bed = models.OneToOneField(Bed, on_delete=models.CASCADE)
     discharge_date = models.DateField(null=True, blank=True)
     is_discharged = models.BooleanField(default=False)
-    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=None) 
-
-    def has_booked_bed(self):
-        return BedBooking.objects.filter(patient=self.patient).exists()
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None)
 
     def __str__(self):
         return f"{self.patient.fullname} - Admission ID: {self.patient.PatientID}"
-    @classmethod
-    def get_available_bed(cls, number, ward_id):
-        try:
-           ward = Ward.objects.get(pk=ward_id)
-           return cls.objects.get(number=number, ward=ward, is_available=True)
-        except cls.DoesNotExist:
-            return None
-        except Ward.DoesNotExist:
-          return None
+
     def calculate_total_charges(self):
-        # Calculate the number of days between admission and discharge dates
         if self.admission_date and self.discharge_date:
             duration = self.discharge_date - self.admission_date
-            # Add 1 to include the admission day in the calculation
             total_days = duration.days + 1
-            # Multiply the total days by the daily charge of the ward
             total_charges = total_days * self.ward.daily_charge
             return total_charges
         return 0
+
+class DischargeHistory(models.Model):
+    admission_date = models.DateField(default=None)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    discharge_date = models.DateField(null=True, blank=True)
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None, null=True)
+
+    def __str__(self):
+        return f"{self.patient.fullname} - Discharge Date: {self.discharge_date}"
+
+    def calculate_total_charges(self):
+        if self.admission_date and self.discharge_date:
+            duration = self.discharge_date - self.admission_date
+            total_days = duration.days + 1
+            ward_daily_charge = self.patient.ipdregistration_set.first().ward.daily_charge
+            total_charges = total_days * ward_daily_charge
+            return total_charges
+        return 0
+
+class IPDDischarge(models.Model):
+    discharge_id = models.AutoField(primary_key=True)
+    admission = models.OneToOneField(IPDRegistration, on_delete=models.CASCADE)
+    discharge_date = models.DateField(null=True, blank=True)
+    admission_date = models.DateField(default=None)
+    discharge_summary = models.TextField()
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None, null=True)
+
+class BedBooking(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    bed = models.ForeignKey(Bed, on_delete=models.CASCADE)
+    booking_date = models.DateField(auto_now_add=True)
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE, default=None)
+
+@receiver(post_save, sender=Ward)
+def create_beds(sender, instance, created, **kwargs):
+    if created:
+        total_beds = instance.total_beds
+        beds_to_create = []
+        for bed_number in range(1, total_beds + 1):
+            beds_to_create.append(Bed(ward=instance, number=str(bed_number), is_available=True, owner=instance.owner))
+        Bed.objects.bulk_create(beds_to_create)
+
+@receiver(post_save, sender=Ward)
+def update_beds(sender, instance, created, **kwargs):
+    if not created:
+        total_beds = instance.total_beds
+        current_beds_count = instance.bed_set.count()
+
+        if current_beds_count < total_beds:
+            beds_to_create = []
+            for bed_number in range(current_beds_count + 1, total_beds + 1):
+                beds_to_create.append(Bed(ward=instance, number=str(bed_number), is_available=True, owner=instance.owner))
+            Bed.objects.bulk_create(beds_to_create)
+        elif current_beds_count > total_beds:
+            beds_to_delete = instance.bed_set.order_by('-number')[:current_beds_count - total_beds]
+            for bed in beds_to_delete:
+                bed.delete()
 
 @receiver(post_save, sender=IPDRegistration)
 def update_bed_availability(sender, instance, created, **kwargs):
@@ -129,30 +114,44 @@ def update_bed_availability(sender, instance, created, **kwargs):
         bed = instance.bed
         bed.is_available = False
         bed.save()
-    elif instance.pk is not None:  # Check if instance exists (i.e., not a new instance)
-        bed = instance.bed
-        bed.is_available = True  # Make bed available again
-        bed.save()
+
+@receiver(post_save, sender=IPDDischarge)
+def move_to_discharge_history(sender, instance, created, **kwargs):
+    if created:
+        discharged_patient = instance.admission.patient
+        DischargeHistory.objects.create(patient=discharged_patient, discharge_date=instance.discharge_date, owner=instance.owner, admission_date=instance.admission_date)
+
+        admission = instance.admission
+        admission.is_discharged = True
+        admission.discharge_date = instance.discharge_date
+        admission.save()
+
+        bed = admission.bed
+        if bed:
+            bed.is_available = True
+            bed.save()
+
+        admission.delete()
 
 @receiver(pre_delete, sender=IPDRegistration)
 def delete_bed_availability(sender, instance, **kwargs):
     bed = instance.bed
     if bed:
-        bed.is_available = True  # Mark the bed as available
+        bed.is_available = True
         bed.save()
-@receiver(pre_delete, sender=IPDRegistration)
-def handle_discharge(sender, instance, **kwargs):
-    if instance.is_discharged:
-        # Create IPDDischarge instance
-        discharge_instance, created = IPDDischarge.objects.get_or_create(admission=instance)
-        discharge_instance.discharge_date = instance.discharge_date
-      # discharge_instance.ward= instance.ward
-        # ward=instance.ward
-        discharge_instance.admission_date= instance.admission_date
-        discharge_instance.save()
+# @receiver(pre_delete, sender=IPDRegistration)
+# def handle_discharge(sender, instance, **kwargs):
+#     if instance.is_discharged:
+#         # Create IPDDischarge instance
+#         discharge_instance, created = IPDDischarge.objects.get_or_create(admission=instance)
+#         discharge_instance.discharge_date = instance.discharge_date
+#       # discharge_instance.ward= instance.ward
+#         # ward=instance.ward
+#         discharge_instance.admission_date= instance.admission_date
+#         discharge_instance.save()
         
-        # Move patient details to discharge history
-        DischargeHistory.objects.create(patient=instance.patient, admission_date=instance.admission_date,discharge_date=instance.discharge_date)
+#         # Move patient details to discharge history
+#         DischargeHistory.objects.create(patient=instance.patient, admission_date=instance.admission_date,discharge_date=instance.discharge_date)
 
         # Mark the bed as available again
         # bed = instance.bed

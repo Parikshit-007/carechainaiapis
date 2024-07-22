@@ -1,7 +1,7 @@
 from django.db import models
 from hos_login.models import Custom_User
 from django.utils import timezone
-
+from doctor.models.models import Doctor
 class Patient(models.Model):
     GENDER_CHOICES = [
         ('Male', 'Male'),
@@ -17,9 +17,16 @@ class Patient(models.Model):
         ('Friend', 'Friend'),
         ('Other', 'Other'),
     ]
+    PAYMENT_MODE= [
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+        ('online', 'Online'),
+        ('insurance', 'Insurance'),
+        ('other', 'Other'),   
+    ]
 
     PatientID = models.AutoField(primary_key=True)
-    FirstName = models.CharField(max_length=255)
+    Relative_Name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     Relationship = models.CharField(max_length=100, blank=True)
@@ -40,7 +47,7 @@ class Patient(models.Model):
     Gender = models.CharField(max_length=10)  
     DOB = models.DateField()
     Register_Date = models.DateField()
-
+    PAYMENT_MODE= models.CharField(max_length=100, choices=PAYMENT_MODE, default='cash')
     PinCode = models.CharField(max_length=10, blank=True, null=True) 
     #Register_Date = models.DateTimeField(default=timezone.now)
 
@@ -67,7 +74,22 @@ class PatientHistory(models.Model):
             owner_id = self.owner.pk if self.owner else 0
             self.HistoryID = (owner_id * 1000) + max_id + 1
         super().save(*args, **kwargs)
-
+class Visit(models.Model):
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    owner = models.ForeignKey(Custom_User, on_delete=models.CASCADE,default=False)
+    total_visits= models.PositiveIntegerField(default=0) 
+    def __str__(self):
+        return f'{self.patient.name} visit to {self.doctor.name} on {self.date}'
+    # def save(self, *args, **kwargs):
+    #     # Ensure total_visits is updated
+    #     self.total_visits = Visit.objects.filter(
+    #         doctor=self.doctor,
+    #         owner=self.owner
+    #     ).count()
+    #     super().save(*args, **kwargs)
 class PatientBilling(models.Model):
     BillingID = models.AutoField(primary_key=True)
     PatientID = models.ForeignKey(Patient, on_delete=models.CASCADE)

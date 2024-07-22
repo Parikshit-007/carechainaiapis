@@ -19,9 +19,9 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             # Check if the appointment slot is available
-            date = serializer.validated_data['date']
+           # date = serializer.validated_data['date']
             time_slot = serializer.validated_data['time_slot']
-            if Appointment.objects.filter(date=date, time_slot=time_slot).exists():
+            if Appointment.objects.filter( time_slot=time_slot).exists():
                 return Response({'error': 'Appointment slot already booked.'}, status=status.HTTP_400_BAD_REQUEST)
             # Create the appointment
             serializer.save(owner=self.request.user)

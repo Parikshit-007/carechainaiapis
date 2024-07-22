@@ -5,4 +5,5 @@ from .models import Hospital
 class HospitalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hospital
-        fields = ['id', 'name', 'address', 'phone', 'logo', 'owner', 'gstin', 'registration_number']
+        fields = '__all__'
+        read_only_fields = ['owner']

@@ -1,14 +1,17 @@
 # patient/views/views.py
 from rest_framework import generics
 from rest_framework.views import APIView
-from patient.models.models import Patient, PatientBilling, PatientHistory, PatientLedger, PatientReminder, PatientVisitList
+from patient.models.models import Patient, PatientBilling, PatientHistory, Visit,PatientLedger, PatientReminder, PatientVisitList
+from decimal import Decimal, InvalidOperation
+
 from patient.serializers import (
     PatientSerializer, 
     PatientBillingSerializer, 
     PatientHistorySerializer, 
     PatientLedgerSerializer, 
     PatientReminderSerializer, 
-    PatientVisitListSerializer
+    PatientVisitListSerializer,
+    VisitSerializer
 )
 from rest_framework import status
 from knox.auth import TokenAuthentication
@@ -26,7 +29,7 @@ from rest_framework.response import Response
 # Patient API views
 
 from rest_framework.exceptions import PermissionDenied
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.response import Response
 
 class OwnerBasedQuerysetMixin:
@@ -138,8 +141,75 @@ class PatientVisitListListCreateView(OwnerBasedQuerysetMixin, AssignOwnerMixin, 
     queryset = PatientVisitList.objects.all()
     serializer_class = PatientVisitListSerializer
  #   authentication_classes = (TokenAuthentication,)
+from django.db.models import Sum
 
 class PatientVisitListRetrieveUpdateDestroyView(OwnerBasedQuerysetMixin, AssignOwnerMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = PatientVisitList.objects.all()
     serializer_class = PatientVisitListSerializer
   #  authentication_classes = (TokenAuthentication,)
+class VisitViewSet(generics.ListCreateAPIView):
+    serializer_class = VisitSerializer
+    permission_classes = [IsAuthenticated]
+    # queryset = Visit.objects.all()
+
+    def get_queryset(self):
+        return Visit.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    # def create(self, request, *args, **kwargs):
+    #     # Create a mutable copy of the request data
+    #     data = dict(request.data)  # Convert QueryDict to a dict
+
+    #     # Debugging: Print the request data
+    #     print("Request data (mutable):", data)
+
+    #     # Extract data fields
+    #     patient_id = data.get('patient')
+    #     total_visits = int(data.get('total_visits', 0))  # Ensure total_visits is an integer
+
+    #     if not patient_id:
+    #         return Response({'error': 'Patient ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     # Add owner to the data
+    #     data['owner'] = request.user.pk
+
+    #     # Create the serializer instance with the updated data
+    #     serializer = self.get_serializer(data=data)
+
+    #     # Validate the serializer data
+    #     if not serializer.is_valid():
+    #         print("Serializer errors:", serializer.errors)
+    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    #     # Save the validated serializer data
+    #     self.perform_create(serializer)
+
+    #     # Calculate total cost using manually provided total_visits
+    #     doctor_id = serializer.validated_data.get('doctor')
+    #     visit_price = serializer.validated_data.get('price', 0)
+    #     total_cost = total_visits * visit_price
+
+    #     response_data = {
+    #         'visit': serializer.data,
+    #         'total_visits': total_visits,
+    #         'total_cost': total_cost
+    #     }
+
+    #     # Return a success response with the created data and calculated fields
+    #     headers = self.get_success_headers(serializer.data)
+    #     return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+    
+class VisitViewSet(OwnerBasedQuerysetMixin, AssignOwnerMixin, generics.ListCreateAPIView):
+    serializer_class = VisitSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Visit.objects.all()  
+
+    def get_queryset(self):
+        return Visit.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+   

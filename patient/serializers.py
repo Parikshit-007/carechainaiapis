@@ -1,6 +1,6 @@
 # patient/serializers.py
 from rest_framework import serializers
-from patient.models.models import Patient, PatientBilling, PatientHistory, PatientLedger, PatientReminder, PatientVisitList
+from patient.models.models import Patient, PatientBilling, PatientHistory, PatientLedger, PatientReminder, PatientVisitList,Visit
 from rest_framework.exceptions import PermissionDenied
 from django.utils.dateparse import parse_datetime
 
@@ -25,6 +25,14 @@ class PatientSerializer(serializers.ModelSerializer):
         validated_data['owner'] = user
 
         return super().create(validated_data)
+
+
+
+class VisitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Visit
+        fields = '__all__'
+        read_only_fields = ['owner']
 
 class PatientBillingSerializer(serializers.ModelSerializer):
     class Meta:

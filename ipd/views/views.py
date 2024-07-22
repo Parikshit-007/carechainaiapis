@@ -200,13 +200,13 @@ class IPDDischargeListCreateView(generics.ListCreateAPIView):
         instance = serializer.save(admission=ipd_registration,admission_date=admission_date,discharge_date=discharge_date, owner=self.request.user)
 
         # Save to DischargeHistory
-        DischargeHistoryModel.objects.create(
-            patient=ipd_registration.patient,
-            admission_date=ipd_registration.admission_date,  # Assuming admission_date is a field in IPDRegistration
-            discharge_date=discharge_date,
-            #ward = ipd_registration.ward,
-            owner=self.request.user
-        )
+        # DischargeHistoryModel.objects.create(
+        #     patient=ipd_registration.patient,
+        #     admission_date=ipd_registration.admission_date,  # Assuming admission_date is a field in IPDRegistration
+        #     discharge_date=discharge_date,
+        #     #ward = ipd_registration.ward,
+        #     owner=self.request.user
+        # )
         duration = discharge_date - admission_date
         total_days = duration.days
 
@@ -289,8 +289,15 @@ class IPDAdmitReportRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
     serializer_class = IPDAdmitReportSerializer
 
 class DischargeHistory(generics.ListCreateAPIView):
-    queryset= DischargeHistoryModel.objects.all()
+   # queryset= DischargeHistoryModel.objects.all()
     serializer_class = DischargeHistorySerializer
+    def get_queryset(self):
+        # Filter hospitals by the owner (the logged-in user)
+        user = self.request.user
+        return DischargeHistoryModel.objects.filter(owner=user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 class IPDDepositReportListCreateView(generics.ListCreateAPIView):
     queryset = IPDDepositReport.objects.all()
