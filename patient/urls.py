@@ -6,7 +6,7 @@ from patient.views.views import (
     PatientHistoryListCreateView, PatientHistoryRetrieveUpdateDestroyView,
     PatientLedgerListCreateView, PatientLedgerRetrieveUpdateDestroyView,
     PatientReminderListCreateView, PatientReminderRetrieveUpdateDestroyView,
-    PatientVisitListListCreateView, PatientVisitListRetrieveUpdateDestroyView,VisitViewSet
+    PatientVisitListListCreateView, PatientVisitListRetrieveUpdateDestroyView,VisitViewSetRetrieveUpdateDestroyView,VisitViewSet
 )
 from rest_framework.routers import DefaultRouter
 
@@ -20,7 +20,7 @@ urlpatterns = [
     path('api/patient-billings/<int:pk>/', PatientBillingRetrieveUpdateDestroyView.as_view(), name='api-patientbilling-retrieve-update-destroy'),
 
     path('api/patient-doctorvists/', VisitViewSet.as_view(), name=('visits')),
-
+    path('api/patient-doctorvists/<int:pk>/', VisitViewSetRetrieveUpdateDestroyView.as_view(), name=('visits-retrieve-update-destroy')),
     path('api/patient-histories/', PatientHistoryListCreateView.as_view(), name='api-patienthistory-list-create'),
     path('api/patient-histories/<int:pk>/', PatientHistoryRetrieveUpdateDestroyView.as_view(), name='api-patienthistory-retrieve-update-destroy'),
 

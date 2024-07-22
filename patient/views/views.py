@@ -201,7 +201,7 @@ class VisitViewSet(generics.ListCreateAPIView):
     #     headers = self.get_success_headers(serializer.data)
     #     return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
     
-class VisitViewSet(OwnerBasedQuerysetMixin, AssignOwnerMixin, generics.ListCreateAPIView):
+class VisitViewSetRetrieveUpdateDestroyView(OwnerBasedQuerysetMixin, AssignOwnerMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = VisitSerializer
     permission_classes = [IsAuthenticated]
     queryset = Visit.objects.all()  
